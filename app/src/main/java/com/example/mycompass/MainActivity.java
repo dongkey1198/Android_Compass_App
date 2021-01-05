@@ -1,23 +1,40 @@
 package com.example.mycompass;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
+import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Address;
+import android.location.Geocoder;
+import android.location.Location;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.view.animation.Animation;
 import android.view.animation.RotateAnimation;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnSuccessListener;
+
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
     private ImageView compass_spit;
-    private TextView orientation, location;
+    private TextView orientation;
 
     private float[] mGravity = new float[3];
     private float[] mGeomagnetic = new float[3];
@@ -28,6 +45,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private Sensor accSensor;
     private Sensor megSensor;
 
+    // 좌표 측정을위한 변수
+    private TextView address, lat_lon;
+    // Google's API for Location Service
+    FusedLocationProviderClient fusedLocationProviderClient;
+    // Location Requiest is a config file for all setting related to FUsedLocationProvicerClient.
+    LocationRequest locationRequest;
+    //LocationCallback locationCallback;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -35,26 +60,90 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         compass_spit = (ImageView)findViewById(R.id.compass_spit);
         orientation = (TextView)findViewById(R.id.orientation);
-        location = (TextView)findViewById(R.id.location);
+        lat_lon = (TextView)findViewById(R.id.lat_lon);
+        address = (TextView)findViewById(R.id.location);
 
         mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
         accSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         megSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 
+        //==============Codes for GPS Tracker================
+        // Set all properties of LocationRequest
+        locationRequest = new LocationRequest();
+        // How often does the default location check occur
+        locationRequest.setInterval(1000 * 30);
+        // How often does the location check occur when set to most frequent update
+        locationRequest.setFastestInterval(1000 * 5);
+        locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
 
-    }
+        updateGPS();
+
+    }//end of OnCreate
+
 
     @Override
     protected void onResume() {
         super.onResume();
         mSensorManager.registerListener(this, accSensor, SensorManager.SENSOR_DELAY_UI);
         mSensorManager.registerListener(this, megSensor, SensorManager.SENSOR_DELAY_UI);
+
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         mSensorManager.unregisterListener(this);
+    }
+
+    //현재의 위치를 측정하여 주소를 가져오는 코드
+    //위치를 측정하는 센서사용을 허용해줘야만 사용가능하다.
+    private  void updateGPS(){
+
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+
+        if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            fusedLocationProviderClient.getLastLocation().addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                @Override
+                public void onSuccess(Location location) {
+
+                    lat_lon.setText("위도: " + location.getLatitude() + ", 경도: " + location.getLongitude());
+
+                    Geocoder geocoder = new Geocoder(MainActivity.this);
+
+                    try{
+                        List<Address> addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(),1);
+                        address.setText(addresses.get(0).getAddressLine(0));
+                    } catch (Exception e){
+                        address.setText("주소를 찾을수 없습니다.");
+                    }
+
+                }
+            });
+        }
+        else{
+            //permissions not granted
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
+                requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+            }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        switch (requestCode){
+            case 1:
+                if(grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    updateGPS();
+                }
+                else{
+                    Toast.makeText(this, "This app requires permission to be granted in order to work propely", Toast.LENGTH_LONG).show();
+                    finish();
+                }
+                break;
+        }
+
     }
 
     @Override
