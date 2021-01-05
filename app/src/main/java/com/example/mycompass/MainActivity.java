@@ -2,6 +2,7 @@ package com.example.mycompass;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.Manifest;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -16,7 +17,7 @@ import android.widget.TextView;
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
     private ImageView compass_spit;
-    private TextView textView;
+    private TextView orientation, location;
 
     private float[] mGravity = new float[3];
     private float[] mGeomagnetic = new float[3];
@@ -27,19 +28,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private Sensor accSensor;
     private Sensor megSensor;
 
-
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         compass_spit = (ImageView)findViewById(R.id.compass_spit);
-        textView = (TextView)findViewById(R.id.orientation);
-        mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
+        orientation = (TextView)findViewById(R.id.orientation);
+        location = (TextView)findViewById(R.id.location);
 
+        mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
         accSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         megSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+
 
     }
 
@@ -48,7 +49,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onResume();
         mSensorManager.registerListener(this, accSensor, SensorManager.SENSOR_DELAY_UI);
         mSensorManager.registerListener(this, megSensor, SensorManager.SENSOR_DELAY_UI);
-
     }
 
     @Override
@@ -96,7 +96,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
 
         compass_spit.startAnimation(animation);
-        textView.setText((360 - (int)azimuth) + "°");
+        orientation.setText((360 - (int)azimuth) + "°");
 
     }
 
